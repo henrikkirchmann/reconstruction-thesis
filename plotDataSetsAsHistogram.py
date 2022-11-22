@@ -1,8 +1,9 @@
+import pandas as pd
 import pm4py
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib import rc
-import pandas as pd
+
 
 def getTraceLengthsList(logList):
     logTraceLengths = list()
@@ -13,24 +14,25 @@ def getTraceLengthsList(logList):
         logTraceLengths.append(traceLengths)
     return logTraceLengths
 
+
 def transformListListToDataframe(lenList):
     st = []
     i = 0
     for logName in logNameList:
         st.extend([logName] * len(logList[i]))
         i += 1
-    ll =[]
+    ll = []
     for lengths in lenList:
         ll.extend(lengths)
     return pd.DataFrame(data=list(zip(ll, st)), columns=['Trace Length', "Event Log"])
 
 
-#BPIC 2017
-#BPIC 2015 Municipality 1
-#BPIC 2013 Closed Problems
-#Sepsis Cases
+# BPIC 2017
+# BPIC 2015 Municipality 1
+# BPIC 2013 Closed Problems
+# Sepsis Cases
 logNameList = ["BPIC 2017", "BPIC 2015 Municipality 1", "BPIC 2013 Closed Problems", "Sepsis Cases"]
-#logName = "Sepsis Cases"
+# logName = "Sepsis Cases"
 logList = []
 for logName in logNameList:
     log = pm4py.read_xes("/vol/fob-vol4/mi17/kirchmah/PycharmProjects/BA/" + logName + ".xes")
@@ -44,14 +46,13 @@ rc('text', usetex=True)
 
 fig, ax = plt.subplots()
 plt.grid(axis='y')
-#fig.set_size_inches(13, 8.5)
+# fig.set_size_inches(13, 8.5)
 print(pdList)
 ax = sns.displot(
-    pdList, x="Trace Length", col="Event Log", aspect=0.37*4.25,
-    binwidth = 1, col_wrap=2,
-  facet_kws=dict(margin_titles=True, sharex = False, sharey = False), kind="hist"
+    pdList, x="Trace Length", col="Event Log", aspect=0.37 * 4.25,
+    binwidth=1, col_wrap=2,
+    facet_kws=dict(margin_titles=True, sharex=False, sharey=False), kind="hist"
 )
-
 
 ax.set_titles('{col_name}')
 

@@ -1,20 +1,17 @@
+'''
+    This file was in the beginning part of PM4Py (More Info: https://pm4py.fit.fraunhofer.de).
+    We modified PM4Pys Process Tree data structure and play-out technique to build our experiments
+'''
+
 import copy
 
-import pm4py
-from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.objects.conversion.wf_net import converter as wf_net_converter
-from pm4py.visualization.petri_net import visualizer as pn_visualizer
+from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.visualization.process_tree import visualizer as pt_visualizer
-from pm4py.algo.conformance.alignments.process_tree.util import search_graph_pt_frequency_annotation
-from generateLogFreq import generateLog, GenerationTree
-import time
-
-from pm4py.algo.simulation.playout.petri_net import algorithm as simulator
-from workFlowNet2ProcessTree.isSeqRandom import freqOfCheckTicketSecondPositionInTrace
-from workFlowNet2ProcessTree.isLoopRandom import freqOfLoop
-from workFlowNet2ProcessTree.xorFreq import freqOfXOR
 from workFlowNet2ProcessTree.eventFrequencyPT import eventFreqPT
+
+from strategyDwithVarianceD import generateLog, GenerationTree
 
 
 def transformTraceToString(generatedTrace):
@@ -25,6 +22,7 @@ def transformTraceToString(generatedTrace):
         else:
             traceString += event._dict.get('concept:name') + ", "
     return traceString
+
 
 def transformLogToTraceStringList(log):
     log_list = list()
@@ -47,10 +45,6 @@ gviz = pn_visualizer.apply(net, initial_marking, final_marking, parameters=param
 pn_visualizer.save(gviz, "inductive_frequency.svg")
 '''
 
-
-
-
-
 tree = wf_net_converter.apply(net, initial_marking, final_marking)
 ''' 
 aligned_traces = pm4py.conformance_diagnostics_alignments(log, tree)
@@ -61,8 +55,6 @@ pt_visualizer.view(gviz)
 gviz = pt_visualizer.apply(tree, parameters={pt_visualizer.Variants.WO_DECORATION.value.Parameters.FORMAT: "svg"})
 pt_visualizer.view(gviz)
 
-
-
 ''' 
 start = time.time()
 aligned_traces = pm4py.conformance_diagnostics_alignments(log, tree)
@@ -71,24 +63,19 @@ end = time.time()
 print(end - start)
 '''
 
-
 ls = 100
 logs = list()
 pt = GenerationTree(tree)
 pt = eventFreqPT(pt, log)
-number_of_cases = pt.eventFreq #Number of Cases in the wf net
+number_of_cases = pt.eventFreq  # Number of Cases in the wf net
 for i in range(ls):
     ptc = copy.deepcopy(pt)
     logs.append(generateLog(ptc, number_of_cases))
 
-for i in range(ls-1):
-    logs[0] = [x for x in logs[0] if x in logs[i+1]]
-    print("Schnittmenge nach " + str(i+1) + "generierten Logs: " + str(len(logs[0])))
+for i in range(ls - 1):
+    logs[0] = [x for x in logs[0] if x in logs[i + 1]]
+    print("Schnittmenge nach " + str(i + 1) + "generierten Logs: " + str(len(logs[0])))
 log_list = transformLogToTraceStringList(log)
-
-
-
-
 
 ''' 
 c = 0

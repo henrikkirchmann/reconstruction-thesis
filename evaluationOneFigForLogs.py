@@ -6,7 +6,6 @@ from statistics import median
 import matplotlib.transforms as transforms
 import numpy as np
 import pandas as pd
-import pm4py
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib import rc
@@ -18,12 +17,12 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.process_tree import semantics
 from pm4py.statistics.variants.log import get as variants_module
 
-from eventFrequencyPT import eventFreqPT
-from generateLogDynamicDistribution import generateLog as generateLogDistribution
-from generateLogFreq import GenerationTree
-from generateLogFreq import generateLog as generateLogFreq
-from generateLogMA import generateLog as generateLogMA
-from generateLogUniform import generateLog as generateLogUniform
+from frequencyAnnotationOfProcessTree import eventFreqPT
+from strategyC import generateLog as generateLogDistribution
+from strategyDwithVarianceD import GenerationTree
+from strategyDwithVarianceD import generateLog as generateLogFreq
+from strategyInQuantification import generateLog as generateLogMA
+from strategyA import generateLog as generateLogUniform
 
 
 def transformTraceToString(generatedTrace):
@@ -227,7 +226,7 @@ rc('font', **{'family': 'serif', 'serif': ['Computer Modern'], 'size': 13})
 rc('text', usetex=True)
 
 figTraceVariants, axesTraceVariants = plt.subplots(nrows=len(logNames), sharex=True)
-figTraceVariants.set_size_inches(10, 6.5*len(logNames))
+figTraceVariants.set_size_inches(10, 6.5 * len(logNames))
 
 logNameCounter = 0
 for logName in logNames:
@@ -334,7 +333,7 @@ for logName in logNames:
     # Violin Plot for Number of Trace Variants
     #########################################
 
-    if logNameCounter == len(logNames)-1:
+    if logNameCounter == len(logNames) - 1:
         plt.gcf().subplots_adjust(bottom=0.35)
         plt.grid(axis='y')
         set_axis_style(axesTraceVariants[logNameCounter], strategies, variance)
@@ -350,12 +349,14 @@ for logName in logNames:
         x="Strategy", y="Number of Trace Variants", inner="stick", bw=0.5, scale="area",
         color=(0.9882352941176471, 0.5529411764705883, 0.3843137254901961))
     trans = transforms.blended_transform_factory(
-        axesTraceVariants[logNameCounter].get_yticklabels()[0].get_transform(), axesTraceVariants[logNameCounter].transData)
+        axesTraceVariants[logNameCounter].get_yticklabels()[0].get_transform(),
+        axesTraceVariants[logNameCounter].transData)
     axesTraceVariants[logNameCounter].text(1.025, getMaxOfList(getNumberOfTraceVariantsList(list(originalLogList)), 1),
-            "{:.0f}".format(getMaxOfList(getNumberOfTraceVariantsList(list(originalLogList)), 1)),
-            color=(0.4, 0.7607843137254902, 0.6470588235294118), transform=trans,
-            ha="left", va="center")
-    if logNameCounter == len(logNames)-1:
+                                           "{:.0f}".format(
+                                               getMaxOfList(getNumberOfTraceVariantsList(list(originalLogList)), 1)),
+                                           color=(0.4, 0.7607843137254902, 0.6470588235294118), transform=trans,
+                                           ha="left", va="center")
+    if logNameCounter == len(logNames) - 1:
         plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left",
                    mode="expand", borderaxespad=0, ncol=2)
         plt.savefig("pdf/" + logName + "/Violin/NumberOfTraceVariants/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",

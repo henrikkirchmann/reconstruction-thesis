@@ -2,6 +2,7 @@ from pm4py.objects.process_tree import obj as pt_opt
 
 lookUpTable = {}
 
+
 def eventFreqPT(GenerationTree, Log):
     i = 0
     lookUpTable = createLookUpTabel(GenerationTree)
@@ -216,6 +217,7 @@ def createLookUpTabel(GenerationTree):
         nodestr = node.__repr__()
         lookUpTabel[nodestr] = allLeafsOfNode
     return lookUpTabel
+
 
 ''' 
 def calculateLoopDistri(GenerationTree):

@@ -1,25 +1,13 @@
 '''
-    This file is part of PM4Py (More Info: https://pm4py.fit.fraunhofer.de).
-
-    PM4Py is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    PM4Py is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with PM4Py.  If not, see <https://www.gnu.org/licenses/>.
+    This file was in the beginning part of PM4Py (More Info: https://pm4py.fit.fraunhofer.de).
+    We modified PM4Pys Process Tree data structure and play-out technique to build our experiments
 '''
+
+
 import datetime
 import random
 from copy import deepcopy
 
-import numpy as np
-from numpy.random import choice
 from pm4py.objects.log.obj import EventLog, Trace, Event
 from pm4py.objects.process_tree import obj as pt_opt
 from pm4py.objects.process_tree import state as pt_st
@@ -50,7 +38,7 @@ class GenerationTree(ProcessTree):
         return id(self)
 
 
-def generateLog(pt0, no_traces=100, variance = None):
+def generateLog(pt0, no_traces=100):
     """
     Generate a log out of a process tree
 
@@ -60,7 +48,6 @@ def generateLog(pt0, no_traces=100, variance = None):
         Process tree
     no_traces
         Number of traces contained in the process tree
-    variance
 
     Returns
     ------------
@@ -76,7 +63,7 @@ def generateLog(pt0, no_traces=100, variance = None):
     # assigns to each event an increased timestamp from 1970
     curr_timestamp = 10000000
     for i in range(no_traces):
-        ex_seq, traceString = execute(pt, variance)
+        ex_seq, traceString = execute(pt)
         log.append(list(traceString))
         ex_seq_labels = pt_util.project_execution_sequence_to_labels(ex_seq)
         trace = Trace()
@@ -91,7 +78,7 @@ def generateLog(pt0, no_traces=100, variance = None):
     return log, eventlog
 
 
-def execute(pt, variance):
+def execute(pt):
     """
     Execute the process tree, returning an execution sequence
 
@@ -111,7 +98,7 @@ def execute(pt, variance):
     execution_sequence = list()
     traceString = list()
     while len(enabled) > 0:
-        execute_enabled(enabled, open, closed, execution_sequence, traceString, variance)
+        execute_enabled(enabled, open, closed, execution_sequence, traceString)
     return execution_sequence, traceString
 
 
@@ -131,7 +118,7 @@ def populate_closed(nodes, closed):
         populate_closed(node.children, closed)
 
 
-def execute_enabled(enabled, open, closed, execution_sequence=None, traceString=None, variance = None):
+def execute_enabled(enabled, open, closed, execution_sequence=None, traceString=None):
     """
     Execute an enabled node of the process tree
 
@@ -171,48 +158,45 @@ def execute_enabled(enabled, open, closed, execution_sequence=None, traceString=
     execution_sequence.append((vertex, pt_st.State.OPEN))
     if len(vertex.children) > 0:
         if vertex.operator is pt_opt.Operator.LOOP:
-            while len(vertex.children) < 3:  # wieso? jedes loop hat 2 kinder oder?
+            while len(vertex.children) < 3:
                 vertex.children.append(ProcessTree(parent=vertex))
         if vertex.operator is pt_opt.Operator.LOOP:
-            #vertex.eventFreq -= 1
+            vertex.eventFreq -= 1
             c = vertex.children[0]
             enabled.add(c)
             execution_sequence.append((c, pt_st.State.ENABLED))
         if vertex.operator is pt_opt.Operator.SEQUENCE:
-            #vertex.eventFreq -= 1
+            vertex.eventFreq -= 1
             c = vertex.children[0]
             enabled.add(c)
             execution_sequence.append((c, pt_st.State.ENABLED))
         elif vertex.operator is pt_opt.Operator.PARALLEL:
-            #vertex.eventFreq -= 1
+            vertex.eventFreq -= 1
             enabled |= set(vertex.children)
             for x in vertex.children:
                 if x in closed:
                     closed.remove(x)
             map(lambda c: execution_sequence.append((c, pt_st.State.ENABLED)), vertex.children)
         elif vertex.operator is pt_opt.Operator.XOR:
-            #vertex.eventFreq -= 1
-            vc = list()
+            vertex.eventFreq -= 1
+            vc = vertex.children
             probability_distribution = list()
             for child in vertex.children:
                 eventFreq = child.eventFreq
-                # remove children with no Freq left
-                if (eventFreq > 0):
-                    vc.append(child)
-                    probability_distribution.append(eventFreq)
+                probability_distribution.append(eventFreq)
             c = random.choices(population=vc, weights=probability_distribution, k=1)
             enabled.add(c[0])
             execution_sequence.append((c, pt_st.State.ENABLED))
     else:
         if (type(vertex) is not ProcessTree):
-            #vertex.eventFreq -= 1
+            vertex.eventFreq -= 1
             if vertex.label is not None:
                 traceString.append(vertex.label)
-        close(vertex, enabled, open, closed, execution_sequence, variance)
+        close(vertex, enabled, open, closed, execution_sequence)
     return execution_sequence, traceString
 
 
-def close(vertex, enabled, open, closed, execution_sequence, variance):
+def close(vertex, enabled, open, closed, execution_sequence):
     """
     Close a given vertex of the process tree
 
@@ -232,10 +216,10 @@ def close(vertex, enabled, open, closed, execution_sequence, variance):
     open.remove(vertex)
     closed.add(vertex)
     execution_sequence.append((vertex, pt_st.State.CLOSED))
-    process_closed(vertex, enabled, open, closed, execution_sequence, variance)
+    process_closed(vertex, enabled, open, closed, execution_sequence)
 
 
-def process_closed(closed_node, enabled, open, closed, execution_sequence, variance):
+def process_closed(closed_node, enabled, open, closed, execution_sequence):
     """
     Process a closed node, deciding further operations
 
@@ -255,7 +239,7 @@ def process_closed(closed_node, enabled, open, closed, execution_sequence, varia
     vertex = closed_node.parent
     if vertex is not None and vertex in open:
         if should_close(vertex, closed, closed_node):
-            close(vertex, enabled, open, closed, execution_sequence, variance)
+            close(vertex, enabled, open, closed, execution_sequence)
         else:
             enable = None
             if vertex.operator is pt_opt.Operator.SEQUENCE or vertex.operator is pt_opt.Operator.INTERLEAVING:
@@ -280,7 +264,7 @@ def process_closed(closed_node, enabled, open, closed, execution_sequence, varia
                 # decide if we end loop or execute right child
                 else:
                     vertexChildren = vertex.children[:2]
-
+                    # wieso?
                     if vertexChildren[1].eventFreq == 0 and closed_node == vertexChildren[1]:
                         enable = vertex.children[0]
                     else:
@@ -296,30 +280,21 @@ def process_closed(closed_node, enabled, open, closed, execution_sequence, varia
                         probabilityOfRightChild = 1 - probabilityOfNoRightChild
                         weights = [probabilityOfRightChild, probabilityOfNoRightChild]
                         '''
-                        probability_distribution = vertex.eventFreq / vertex.children[0].eventFreq
+                        prOfNoRepeat = vertex.eventFreq / vertex.children[0].eventFreq
                         r = random.random()
-                        weights = [1 - probability_distribution, probability_distribution]
+                        # weights = vertex.loopdistribution
                         population = [1, 2]
 
                         # if we executed left child and have a choice to execute right child, make a random choice to execute right child or end loop
                         if vertex.children.index(closed_node) == 0:
-                            # """
-                            if vertex.loopCountLaplace is None:
-                                c = random.choices(population=population, weights=weights, k=1)
-                                enable = vertex.children[c[0]]
-                            else:
-                                enable = vertex.children[2]
-                                vertex.loopCount = 0
-                                vertex.loopCountLaplace = None
-                            # """
                             # c = random.choices(population=population, weights=weights, k=1)
                             # enable = vertex.children[c[0]]
-                            '''
+                            # '''
                             if r > prOfNoRepeat:
                                 enable = vertex.children[1]
                             else:
                                 enable = vertex.children[2]
-                            '''
+                            # '''
                         else:
                             enable = vertex.children[0]
             if enable is not None:

@@ -1,35 +1,33 @@
 import copy
-import os
 import itertools
+import os
 from collections import Counter as mset
+from pathlib import Path
 from statistics import median
-#from pathlib import Path
-import matplotlib.patches as patches
+
+# from pathlib import Path
 import matplotlib.transforms as transforms
 import numpy as np
 import pandas as pd
+
 import pm4py
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib import rc
-from pathlib import Path
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.algo.evaluation.earth_mover_distance import algorithm as emd_evaluator
 from pm4py.algo.simulation.playout.petri_net import algorithm as simulator
-from pm4py.objects.conversion.wf_net import converter as wf_net_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.process_tree import semantics
 from pm4py.statistics.variants.log import get as variants_module
 
-from eventFrequencyPT import eventFreqPT
-
-from generateLogFreq import GenerationTree
-
-from generateLogUniform import generateLog as generateLogUniform
-from generateLogStaticDistribution import generateLog as generateLogStaticDistribution
-from generateLogDynamicDistribution import generateLog as generateLogDynamicDistribution
-from generateLogFreq import generateLog as generateLogFreq
-from generateLogMA import generateLog as generateLogMA
+from frequencyAnnotationOfProcessTree import eventFreqPT
+from strategyC import generateLog as generateLogDynamicDistribution
+from strategyDwithVarianceD import GenerationTree
+from strategyDwithVarianceD import generateLog as generateLogFreq
+from strategyInQuantification import generateLog as generateLogMA
+from strategyB import generateLog as generateLogStaticDistribution
+from strategyA import generateLog as generateLogUniform
 
 
 def getLengthOfLongestTrace(log):
@@ -69,7 +67,8 @@ def transformLogInStringList(log):
     return stringList
 
 
-def getLogs(processTree, numberOfLogsToGenerate, numberOfCasesInOriginalLog, strategy, im, fm, originalLog, variance, maxTraceLength):
+def getLogs(processTree, numberOfLogsToGenerate, numberOfCasesInOriginalLog, strategy, im, fm, originalLog, variance,
+            maxTraceLength):
     # list of all Eventlog() 's generated
     generatedEventLogList = list()
     # list of Logs that have their traces as strings
@@ -221,18 +220,21 @@ def transfromTraceLengthsToDataframes(originalTL: list[list], generatedTLs: list
     originalLogOrNotList = []
     for _ in strategies:
         ogORnotList = []
-        ogORnotList.extend(['Average Trace Length Distribution of ' + str(numberOfLogs[-1]) + ' Play-Outs'] * (len(originalTL[0])) * numberOfLogs[-1])
-        ogORnotList.extend(['Trace Length Distribution of the Original ' + logname + ' Log'] * (len(originalTL[0])) * numberOfLogs[-1])
+        ogORnotList.extend(
+            ['Average Trace Length Distribution of ' + str(numberOfLogs[-1]) + ' Play-Outs'] * (len(originalTL[0])) *
+            numberOfLogs[-1])
+        ogORnotList.extend(
+            ['Trace Length Distribution of the Original ' + logname + ' Log'] * (len(originalTL[0])) * numberOfLogs[-1])
         originalLogOrNotList.extend(ogORnotList)
     tupels = list(zip(traceLengths, st, originalLogOrNotList))
     return pd.DataFrame(tupels, columns=['Trace Length', 'Play-Out Strategy', 'Trace Length Distribution'])
 
 
 def transfromTraceLengthsToDataframesHistograms(originalTL: list[list], generatedTLs: list[list], numberOfLogs: list,
-                                      strategies: list, logname):
+                                                strategies: list, logname):
     originalTLscaledToNumberOfLogs = []
     weights = []
-    weights.extend([1/numberOfLogs[-1]] * len(strategies) * len(originalTL[0]) * numberOfLogs[-1] * 2 )
+    weights.extend([1 / numberOfLogs[-1]] * len(strategies) * len(originalTL[0]) * numberOfLogs[-1] * 2)
 
     for i in range(numberOfLogs[-1]):
         originalTLscaledToNumberOfLogs.extend(originalTL[0])
@@ -264,16 +266,18 @@ def transfromTraceLengthsToDataframesHistograms(originalTL: list[list], generate
     '''
     for _ in strategies:
         ogORnotList = []
-        ogORnotList.extend(['Trace Length Distribution of the Original ' + logname + ' Log'] * (len(originalTL[0])) * numberOfLogs[-1])
-        ogORnotList.extend(['Average Trace Length Distribution of ' + str(numberOfLogs[-1]) + ' Play-Outs'] * (len(originalTL[0])) * numberOfLogs[-1])
+        ogORnotList.extend(
+            ['Trace Length Distribution of the Original ' + logname + ' Log'] * (len(originalTL[0])) * numberOfLogs[-1])
+        ogORnotList.extend(
+            ['Average Trace Length Distribution of ' + str(numberOfLogs[-1]) + ' Play-Outs'] * (len(originalTL[0])) *
+            numberOfLogs[-1])
         originalLogOrNotList.extend(ogORnotList)
     tupels = list(zip(traceLengths, st, originalLogOrNotList, weights))
     return pd.DataFrame(tupels, columns=['Trace Length', 'Play-Out Strategy', 'Trace Length Distribution', 'Weights'])
 
 
-
 def transfromOneLogTraceLengthsToDataframes(originalTL: list[list], generatedTLs: list[list],
-                                      strategies: list, logname):
+                                            strategies: list, logname):
     traceLengths = []
     traceLengths.extend(originalTL[0])
     for logs in generatedTLs:
@@ -295,6 +299,7 @@ def transformListListToDataframe(listList: [[]], strategies: [], yname):
         st.extend([strategy] * (len(listList[0])))
     return pd.DataFrame(data=list(zip(flatList, st)), columns=[yname, 'Play-Out Strategy'])
 
+
 def getAvgHistoOverlap(traceLengthsOG: [[]], traceLengthsListStrategies: [[]], numberOfLogs: []):
     lengthsOG = list(set(traceLengthsOG[0]))
     avgHistoOverlap = []
@@ -306,29 +311,32 @@ def getAvgHistoOverlap(traceLengthsOG: [[]], traceLengthsListStrategies: [[]], n
             diff = stCount - ogCount
             if diff <= 0:
                 count += stCount
-            else: count += ogCount
-        avgHistoOverlap.append(count/(len(traceLengthsOG[0])*numberOfLogs[-1]))
+            else:
+                count += ogCount
+        avgHistoOverlap.append(count / (len(traceLengthsOG[0]) * numberOfLogs[-1]))
     return avgHistoOverlap
 
 
 def addHistoIntersection(data, **kws):
     ax = plt.gca()
-    ax.text(.8,.8,"Test 1234", transform = ax.transAxes)
+    ax.text(.8, .8, "Test 1234", transform=ax.transAxes)
     n = 10
-    ax.text(4,4, f"$$HI = {n}$$")
-
-
+    ax.text(4, 4, f"$$HI = {n}$$")
 
 
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
-#BPIC 2015 Municipality 1
-#BPIC 2017
-#Sepsis Cases
-#BPIC 2013 Closed Problems
+# BPIC 2015 Municipality 1
+# BPIC 2017
+# Sepsis Cases
+# BPIC 2013 Closed Problems
 
-logName = "L"
+###########################################
+logName = "BPIC 2013 Closed Problems"
+numberOfLogs = [1]
+###########################################
+
 print(logName)
 citationMA = "Quantifying the Re-identification\nRisk in Published Process Models"
 varianceList = [0.5, 1, 3, 5]
@@ -336,17 +344,18 @@ log = xes_importer.apply(logName + '.xes')
 processTree = pm4py.discover_process_tree_inductive(log)
 net, initial_marking, final_marking = inductive_miner.apply(log)
 
-#processTree = wf_net_converter.apply(net, initial_marking, final_marking)
+# processTree = wf_net_converter.apply(net, initial_marking, final_marking)
 processTreeFreq = GenerationTree(processTree)
 processTreeFreq = eventFreqPT(processTreeFreq, log)
 numberOfCasesInOriginalLog = processTreeFreq.eventFreq
 
-numberOfLogs = [100]
+
 strategies = ["A", "B", "C"]
 for variance in varianceList:
     strategies.append("D with Variance " + str(variance))
-strategies.append(citationMA)  # "PM4PY basic playout of a Petri net", "PM4PY basic playout of a process tree", "PM4PY stochastic playout of a Petri net"]
-#strategies.append("PM4Py's Stochastic Play-Out\nof a Petri Net")
+strategies.append(
+    citationMA)  # "PM4PY basic playout of a Petri net", "PM4PY basic playout of a process tree", "PM4PY stochastic playout of a Petri net"]
+# strategies.append("PM4Py's Stochastic Play-Out\nof a Petri Net")
 numberOfTraceVariantListStrategies = list()
 numberOfTraceLengthsListStrategies = list()
 multiSetIntersectionSizeListStrategies = list()
@@ -356,9 +365,10 @@ maxTraceLength = getLengthOfLongestTrace(log)
 
 for strategy in strategies:
     generatedLogList, generatedEventLogList = getLogs(processTreeFreq, numberOfLogs[-1], numberOfCasesInOriginalLog,
-                                                      strategy, initial_marking, final_marking, log, varianceList[varianceCounter], maxTraceLength=maxTraceLength)
+                                                      strategy, initial_marking, final_marking, log,
+                                                      varianceList[varianceCounter], maxTraceLength=maxTraceLength)
     originalLogList = list()
-    if "D with Variance" in strategy and varianceCounter != len(varianceList)-1:
+    if "D with Variance" in strategy and varianceCounter != len(varianceList) - 1:
         varianceCounter += 1
     originalLogList.append(transformLogToTraceStringList(log))
 
@@ -419,8 +429,8 @@ for strategy in strategies:
         print("Minimum Size of the Multi Set Intersection with the original Log in " + str(
             i) + " generated Logs is: " + str(getMinOfList(multiSetIntersectionSizeList, i)))
 
-    #EMD
-    '''
+    # EMD
+    # '''
     emdList = getEMD(generatedEventLogList, log)
     emdListStrategies.append(emdList)
 
@@ -428,18 +438,18 @@ for strategy in strategies:
         print("Average EMD of the original Log and " + str(i) + " generated Logs is: " + str(getAvgOfList(emdList, i)))
         print("Maximum EMD of the original Log and " + str(i) + " generated Logs is: " + str(getMaxOfList(emdList, i)))
         print("Minimum EMD of the original Log and " + str(i) + " generated Logs is: " + str(getMinOfList(emdList, i)))
-    '''
+    # '''
 
 #########################################
 # Violin Plot for Number of Trace Variants
 #########################################
-#'''
+# '''
 rc('font', **{'family': 'serif', 'serif': ['Computer Modern'], 'size': 13})
 rc('text', usetex=True)
 fig = plt.figure()  # an empty figure with no Axes
 fig, ax = plt.subplots()  # a figure with a single Axes
 fig.set_size_inches(10, 5.5)
-#plt.gcf().subplots_adjust(bottom=0.26)
+# plt.gcf().subplots_adjust(bottom=0.26)
 plt.grid(axis='both')
 ax.set_ylabel('Number of Trace Variants')
 set_axis_style(ax, strategies, variance)
@@ -448,7 +458,7 @@ ax.set_xlabel('Play-Out Strategy', loc='left', labelpad=5)
 plt.axhline(y=getMaxOfList(getNumberOfTraceVariantsList(list(originalLogList)), 1), color=(0.45, 0.71, 0.63),
             dashes=(4, 10), linestyle='--', linewidth=1,
             label='Number of Trace Variants in the Original ' + logName + ' Log.')
-#' that has ' + str(len(log)) + ' Traces.')
+# ' that has ' + str(len(log)) + ' Traces.')
 ax = sns.violinplot(
     data=transformListListToDataframe(numberOfTraceVariantListStrategies, strategies, "Number of Trace Variants"),
     x="Play-Out Strategy", y="Number of Trace Variants", inner="stick", bw=0.5, scale="area", linewidth=0.7,
@@ -462,22 +472,29 @@ ax.text(1.025, getMaxOfList(getNumberOfTraceVariantsList(list(originalLogList)),
 plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left",
            mode="expand", borderaxespad=0, ncol=2)
 plt.tight_layout()
-plt.savefig("pdf/" + logName + "/Violin/NumberOfTraceVariants/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
+
+
+Path("pdf/" + logName + "/NumberOfTraceVariants").mkdir(parents=True, exist_ok=True)
+Path("png/" + logName + "/NumberOfTraceVariants").mkdir(parents=True, exist_ok=True)
+Path("svg/" + logName + "/NumberOfTraceVariants").mkdir(parents=True, exist_ok=True)
+
+
+plt.savefig("pdf/" + logName + "/NumberOfTraceVariants/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
             transparent=True)
-plt.savefig("png/" + logName + "/Violin/NumberOfTraceVariants/" + str(numberOfLogs[-1]) + ".png", format="png",
+plt.savefig("png/" + logName + "/NumberOfTraceVariants/" + str(numberOfLogs[-1]) + ".png", format="png",
             dpi=3000, transparent=True)
-plt.savefig("svg/" + logName + "/Violin/NumberOfTraceVariants/" + str(numberOfLogs[-1]) + ".svg", format="svg",
+plt.savefig("svg/" + logName + "/NumberOfTraceVariants/" + str(numberOfLogs[-1]) + ".svg", format="svg",
             transparent=True)
+
 plt.show()
-#'''
+# '''
 #########################################
 # Violin Plot for Number Of Trace Lengths
 #########################################
 
-""" 
+# """
 pdList = transfromTraceLengthsToDataframes(numberOfTraceLengthsListOriginalLog, numberOfTraceLengthsListStrategies,
                                            numberOfLogs, strategies, logName)
-
 
 if logName == 'BPIC 2017':
     maxLength = 100
@@ -495,7 +512,7 @@ fig = plt.figure()  # an empty figure with no Axes
 
 fig = plt.figure()
 plt.grid(axis='y')
-#pdList.drop(pdList.index[pdList['Trace Lengths'] > maxLength], inplace=True)
+# pdList.drop(pdList.index[pdList['Trace Lengths'] > maxLength], inplace=True)
 set_axis_style(ax, strategies, variance)
 
 if logName == "BPIC 2013 Closed Problems":
@@ -507,36 +524,39 @@ if logName == "BPIC 2013 Closed Problems":
     ax = sns.violinplot(x='Play-Out Strategy', y='Trace Length', hue='Trace Length Distribution',
                         data=pdList, palette=[(0.9882352941176471, 0.5529411764705883, 0.3843137254901961),
                                               (0.4, 0.7607843137254902, 0.6470588235294118)], split=True,
-                        scale="area", width=0.95, cut = 0, gridsize = numberOfCasesInOriginalLog, inner = None,
-                        scale_hue=False, bw = 0.19, linewidth = 0.3)
+                        scale="area", width=0.95, cut=0, gridsize=numberOfCasesInOriginalLog, inner=None,
+                        scale_hue=False, bw=0.19, linewidth=0.3)
 elif logName == "BPIC 2017":
     ax = sns.violinplot(x='Play-Out Strategy', y='Trace Length', hue='Trace Length Distribution',
-                    data=pdList, palette=[(0.9882352941176471, 0.5529411764705883, 0.3843137254901961),
-                                          (0.4, 0.7607843137254902, 0.6470588235294118)], split=True,
-                    scale="area", width=0.95, inner = None, bw = 0.025, cut = 0, gridsize = numberOfCasesInOriginalLog,
-                    scale_hue=False, linewidth = 0.3)
+                        data=pdList, palette=[(0.9882352941176471, 0.5529411764705883, 0.3843137254901961),
+                                              (0.4, 0.7607843137254902, 0.6470588235294118)], split=True,
+                        scale="area", width=0.95, inner=None, bw=0.025, cut=0, gridsize=numberOfCasesInOriginalLog,
+                        scale_hue=False, linewidth=0.3)
 
 
 else:
     ax = sns.violinplot(x='Play-Out Strategy', y='Trace Length', hue='Trace Length Distribution',
-                    data=pdList, palette=[(0.9882352941176471, 0.5529411764705883, 0.3843137254901961),
-                                          (0.4, 0.7607843137254902, 0.6470588235294118)], split=True,
-                    scale="area", width=0.95, inner = None, bw = 0.08, cut = 0, gridsize = numberOfCasesInOriginalLog,
-                    scale_hue=False, linewidth = 0.3)
+                        data=pdList, palette=[(0.9882352941176471, 0.5529411764705883, 0.3843137254901961),
+                                              (0.4, 0.7607843137254902, 0.6470588235294118)], split=True,
+                        scale="area", width=0.95, inner=None, bw=0.08, cut=0, gridsize=numberOfCasesInOriginalLog,
+                        scale_hue=False, linewidth=0.3)
 
-
-ax.set(ylim = (0, maxLength))
+ax.set(ylim=(0, maxLength))
 
 plt.tight_layout()
 
-plt.savefig("pdf/" + logName + "/Violin/NumberOfTraceLengths/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
+Path("pdf/" + logName + "/ViolinsTraceLength").mkdir(parents=True, exist_ok=True)
+Path("png/" + logName + "/ViolinsTraceLength").mkdir(parents=True, exist_ok=True)
+Path("svg/" + logName + "/ViolinsTraceLength").mkdir(parents=True, exist_ok=True)
+
+plt.savefig("pdf/" + logName + "/ViolinsTraceLength/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
             transparent=True)
-plt.savefig("png/" + logName + "/Violin/NumberOfTraceLengths/" + str(numberOfLogs[-1]) + ".png", format="png", dpi=3000,
+plt.savefig("png/" + logName + "/ViolinsTraceLength/" + str(numberOfLogs[-1]) + ".png", format="png", dpi=3000,
             transparent=True)
-plt.savefig("svg/" + logName + "/Violin/NumberOfTraceLengths/" + str(numberOfLogs[-1]) + ".svg", format="svg",
+plt.savefig("svg/" + logName + "/ViolinsTraceLength/" + str(numberOfLogs[-1]) + ".svg", format="svg",
             transparent=True)
 plt.show()
-"""
+# """
 
 #########################################
 # Scatter Plot Length above maxLength
@@ -608,11 +628,12 @@ elif logName == 'BPIC 2013 Closed Problems':
 else:
     maxLength = maxTraceLength + 20
 
-#pdList = transfromOneLogTraceLengthsToDataframes(numberOfTraceLengthsListOriginalLog, numberOfTraceLengthsListStrategies,
+# pdList = transfromOneLogTraceLengthsToDataframes(numberOfTraceLengthsListOriginalLog, numberOfTraceLengthsListStrategies,
 #                                            strategies, logName)
 
-pdList = transfromTraceLengthsToDataframesHistograms(numberOfTraceLengthsListOriginalLog, numberOfTraceLengthsListStrategies,
-                                           numberOfLogs, strategies, logName)
+pdList = transfromTraceLengthsToDataframesHistograms(numberOfTraceLengthsListOriginalLog,
+                                                     numberOfTraceLengthsListStrategies,
+                                                     numberOfLogs, strategies, logName)
 avgHOL = getAvgHistoOverlap(numberOfTraceLengthsListOriginalLog, numberOfTraceLengthsListStrategies, numberOfLogs)
 
 print("------------------------------------------------------------------------------------------------------------")
@@ -622,14 +643,14 @@ fig, ax = plt.subplots()  # a figure with a single Axes
 rc('font', **{'family': 'serif', 'serif': ['Computer Modern'], 'size': 20})
 
 ax = sns.displot(
-    pdList, x="Trace Length", col="Play-Out Strategy", hue = 'Trace Length Distribution', weights = 'Weights',
-    binwidth = 1, col_wrap=4,
-    aspect=1*0.5, facet_kws=dict(margin_titles=True, despine = False), kind="hist"
+    pdList, x="Trace Length", col="Play-Out Strategy", hue='Trace Length Distribution', weights='Weights',
+    binwidth=1, col_wrap=4,
+    aspect=1 * 0.5, facet_kws=dict(margin_titles=True, despine=False), kind="hist"
 )
 
 sns.move_legend(
-    ax, "center", bbox_to_anchor=(.5, .95), shadow = True,
-     ncol=2, title=None, frameon=True, fancybox = True,
+    ax, "center", bbox_to_anchor=(.5, .95), shadow=True,
+    ncol=2, title=None, frameon=True, fancybox=True,
 )
 
 """ 
@@ -642,18 +663,17 @@ for i in range(8):
 """
 ax1 = ax.axes[0]
 ax1.text(1.2, 1.35, " 123", horizontalalignment='right',
-        verticalalignment='top',
-        transform=ax1.transAxes)
+         verticalalignment='top',
+         transform=ax1.transAxes)
 
-
-#ax.map_dataframe(addHistoIntersection(avgHOL))
-#ax.add_legend()
-#values_sns = [h.get_height() for h in ax.patches]
-#bins_sns = [h.get_width() for h in ax.patches]
-#plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left",
+# ax.map_dataframe(addHistoIntersection(avgHOL))
+# ax.add_legend()
+# values_sns = [h.get_height() for h in ax.patches]
+# bins_sns = [h.get_width() for h in ax.patches]
+# plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left",
 #           mode="expand", borderaxespad=0, ncol=2)
-#plt.subplots_adjust(top = 3)
-#ax._legend_out = False
+# plt.subplots_adjust(top = 3)
+# ax._legend_out = False
 
 ''' 
 sns.move_legend(
@@ -661,26 +681,25 @@ sns.move_legend(
      ncol=1, title=None, frameon=True, fancybox = True,
 )
 '''
-#leg = ax.legend()
+# leg = ax.legend()
 
 
-#ax.text(0.5,1, "Test 123123123123")
+# ax.text(0.5,1, "Test 123123123123")
 ax.set_titles('{col_name}')
-ax.set(xlim = (0, maxLength))
-#fig.set_size_inches(17.56, 10)
+ax.set(xlim=(0, maxLength))
+# fig.set_size_inches(17.56, 10)
 plt.tight_layout()
-#plt.subplots_adjust(top=0.2)
-Path("pdf/" + logName + "/Violin/Histogram").mkdir(parents=True, exist_ok=True)
-Path("png/" + logName + "/Violin/Histogram").mkdir(parents=True, exist_ok=True)
-Path("svg/" + logName + "/Violin/Histogram").mkdir(parents=True, exist_ok=True)
-plt.savefig("pdf/" + logName + "/Violin/Histogram/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
+# plt.subplots_adjust(top=0.2)
+Path("pdf/" + logName + "/Histogram").mkdir(parents=True, exist_ok=True)
+Path("png/" + logName + "/Histogram").mkdir(parents=True, exist_ok=True)
+Path("svg/" + logName + "/Histogram").mkdir(parents=True, exist_ok=True)
+plt.savefig("pdf/" + logName + "/Histogram/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
             transparent=True)
-plt.savefig("png/" + logName + "/Violin/Histogram/" + str(numberOfLogs[-1]) + ".png", format="png", dpi=300,
+plt.savefig("png/" + logName + "/Histogram/" + str(numberOfLogs[-1]) + ".png", format="png", dpi=300,
             transparent=True)
-plt.savefig("svg/" + logName + "/Violin/Histogram/" + str(numberOfLogs[-1]) + ".svg", format="svg",
+plt.savefig("svg/" + logName + "/Histogram/" + str(numberOfLogs[-1]) + ".svg", format="svg",
             transparent=True)
 plt.show()
-
 
 #########################################
 # Violin Plot for Histogram Overlap Percentage
@@ -715,7 +734,6 @@ plt.savefig("svg/" + logName + "/Violin/Overlap/" + str(numberOfLogs[-1]) + ".sv
 plt.show()
 '''
 
-
 #########################################
 # Violin Plot for Number Of Multi Set Intersection
 #########################################
@@ -734,23 +752,29 @@ ax.set_ylabel('Multiset Intersection Size with the Original\n' + logName + ' Log
 ax.set_xlabel('Play-Out Strategy', loc='left')
 set_axis_style(ax, strategies, variance)
 ax = sns.violinplot(data=transformListListToDataframe(multiSetIntersectionSizeListStrategies, strategies,
-                                                      'Multiset Intersection Size with the Original\n' + logName + ' Log'), x="Play-Out Strategy",
-                    y='Multiset Intersection Size with the Original\n' + logName + ' Log', inner="stick", scale="area", bw=0.5, linewidth=1,
+                                                      'Multiset Intersection Size with the Original\n' + logName + ' Log'),
+                    x="Play-Out Strategy",
+                    y='Multiset Intersection Size with the Original\n' + logName + ' Log', inner="stick", scale="area",
+                    bw=0.5, linewidth=1,
                     color=(0.9882352941176471, 0.5529411764705883, 0.3843137254901961))
 plt.tight_layout()
 
-plt.savefig("pdf/" + logName + "/Violin/IntersectionSize/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
+Path("pdf/" + logName + "/IntersectionSize/").mkdir(parents=True, exist_ok=True)
+Path("png/" + logName + "/IntersectionSize/").mkdir(parents=True, exist_ok=True)
+Path("svg/" + logName + "/IntersectionSize/").mkdir(parents=True, exist_ok=True)
+
+plt.savefig("pdf/" + logName + "/IntersectionSize/" + str(numberOfLogs[-1]) + ".pdf", format="pdf",
             transparent=True)
-plt.savefig("png/" + logName + "/Violin/IntersectionSize/" + str(numberOfLogs[-1]) + ".png", format="png", dpi=3000,
+plt.savefig("png/" + logName + "/IntersectionSize/" + str(numberOfLogs[-1]) + ".png", format="png", dpi=3000,
             transparent=True)
-plt.savefig("svg/" + logName + "/Violin/IntersectionSize/" + str(numberOfLogs[-1]) + ".svg", format="svg",
+plt.savefig("svg/" + logName + "/IntersectionSize/" + str(numberOfLogs[-1]) + ".svg", format="svg",
             transparent=True)
 plt.show()
 
 #########################################
 # Violin Plot for EMD
 #########################################
-""""
+# """"
 rc('font', **{'family': 'serif', 'serif': ['Computer Modern'], 'size': 13})
 rc('text', usetex=True)
 fig = plt.figure()  # an empty figure with no Axes
@@ -761,12 +785,19 @@ plt.grid(axis='y')
 ax.set_ylabel('EMD with ' + logName + ' Log')
 ax.set_xlabel('Play-Out Strategy', loc='left')
 set_axis_style(ax, strategies, variance)
-ax = sns.violinplot(data = transformListListToDataframe(emdListStrategies, strategies,"EMD with the Original\n" + logName + " Log"), x = "Play-Out Strategy", y = "EMD with the Original\n" + logName + " Log", inner="stick", bw = 0.5, scale = "area", color = (0.9882352941176471, 0.5529411764705883, 0.3843137254901961), linewidth=1,)
+ax = sns.violinplot(
+    data=transformListListToDataframe(emdListStrategies, strategies, "EMD with the Original\n" + logName + " Log"),
+    x="Play-Out Strategy", y="EMD with the Original\n" + logName + " Log", inner="stick", bw=0.5, scale="area",
+    color=(0.9882352941176471, 0.5529411764705883, 0.3843137254901961), linewidth=1, )
 plt.tight_layout()
 
-plt.savefig("pdf/" + logName + "/Violin/EMD/" + str(numberOfLogs[-1]) + ".pdf", format = "pdf", transparent=True)
-plt.savefig("png/" + logName + "/Violin/EMD/" + str(numberOfLogs[-1]) + ".png", format = "png", dpi=3000, transparent=True)
-plt.savefig("svg/" + logName + "/Violin/EMD/" + str(numberOfLogs[-1]) + ".svg", format = "svg", transparent=True)
+Path("pdf/" + logName + "/EMD/").mkdir(parents=True, exist_ok=True)
+Path("png/" + logName + "/EMD/").mkdir(parents=True, exist_ok=True)
+Path("svg/" + logName + "/EMD/").mkdir(parents=True, exist_ok=True)
+
+plt.savefig("pdf/" + logName + "/EMD/" + str(numberOfLogs[-1]) + ".pdf", format="pdf", transparent=True)
+plt.savefig("png/" + logName + "/EMD/" + str(numberOfLogs[-1]) + ".png", format="png", dpi=3000, transparent=True)
+plt.savefig("svg/" + logName + "/EMD/" + str(numberOfLogs[-1]) + ".svg", format="svg", transparent=True)
 plt.show()
 
-"""
+# """
