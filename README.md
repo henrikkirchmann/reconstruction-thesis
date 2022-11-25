@@ -4,7 +4,7 @@
 
 1. Set in evaluation.py in line 336 `logName` to the name of the xes file pf the log we want to import.
 
-    Example. We want to import the "BPIC 2013 Closed Problems.xes" fiel:
+    Example. We want to import the "BPIC 2013 Closed Problems.xes" file:
 
     `logName = 'BPIC 2013 Closed Problems.xes'` 
 
@@ -12,6 +12,6 @@
 
     Example. When each play-out strategy should generate should reconstruct 100 logs from a process tree we type:
 
-    `numberOfLogs = 100` 
+    `numberOfLogs = [100]` 
 
 3. Run the evaluation.py file.
